@@ -519,6 +519,9 @@ func (c *Client) ToCalculated(allGroups []*cgroups.ClientGroup) *CalculatedClien
 // If a given duration is nil - returns false (never obsolete).
 func (c *Client) Obsolete(duration *time.Duration) bool {
 	disconnectedAt := c.GetDisconnectedAt()
+	if disconnectedAt == nil {
+		return false
+	}
 	return duration != nil && !c.IsConnected() && disconnectedAt.Add(*duration).Before(Now())
 }
 
@@ -627,7 +630,7 @@ func (c *Client) BelongsTo(group *cgroups.ClientGroup) bool {
 		return false
 	}
 
-	if !p.ConnectionState.MatchesOneOf(string(c.CalculateConnectionState())) {
+	if !p.ConnectionState.MatchesOneOf(string(c.calculateConnectionStateUnlocked())) {
 		return false
 	}
 
@@ -636,6 +639,13 @@ func (c *Client) BelongsTo(group *cgroups.ClientGroup) bool {
 
 func (c *Client) CalculateConnectionState() ConnectionState {
 	if c.IsConnected() {
+		return Connected
+	}
+	return Disconnected
+}
+
+func (c *Client) calculateConnectionStateUnlocked() ConnectionState {
+	if c.DisconnectedAt != nil {
 		return Connected
 	}
 	return Disconnected

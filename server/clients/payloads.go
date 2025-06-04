@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"strings"
 	"time"
 
 	"github.com/openrport/openrport/server/clients/clientdata"
@@ -58,13 +59,15 @@ func ConvertToClientsPayload(clientsList []*clientdata.CalculatedClient, fields 
 func ConvertToClientPayload(client *clientdata.CalculatedClient, fields []query.FieldsOption) ClientPayload { //nolint:gocyclo
 	requestedFields := query.RequestedFields(fields, "clients")
 	p := ClientPayload{}
+
+	//Source Fellows change
+	client.GetLock().RLock()
+	defer client.GetLock().RUnlock()
+
 	for field := range OptionsSupportedFields["clients"] {
 		if len(fields) > 0 && !requestedFields[field] {
 			continue
 		}
-
-		client.GetLock().RLock()
-		defer client.GetLock().RUnlock()
 
 		switch field {
 		case "id":
@@ -74,7 +77,8 @@ func ConvertToClientPayload(client *clientdata.CalculatedClient, fields []query.
 			name := client.Name
 			p.Name = &name
 		case "os":
-			p.OS = &client.OS
+			val := strings.Clone(client.OS)
+			p.OS = &val
 		case "os_arch":
 			p.OSArch = &client.OSArch
 		case "os_family":
@@ -82,7 +86,8 @@ func ConvertToClientPayload(client *clientdata.CalculatedClient, fields []query.
 		case "os_kernel":
 			p.OSKernel = &client.OSKernel
 		case "hostname":
-			p.Hostname = &client.Hostname
+			val := client.Hostname
+			p.Hostname = &val
 		case "ipv4":
 			p.IPv4 = &client.IPv4
 		case "ipv6":
